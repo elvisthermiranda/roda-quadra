@@ -142,7 +142,13 @@ test('closing a meeting preserves confirmed results and blocks further changes',
     app(MatchService::class)->confirm($first);
     $current = $meeting->matches()->where('status', 'playing')->firstOrFail();
 
-    Livewire::test('pages::dashboard')->call('closeMeeting')->assertHasNoErrors()->assertSee('Encontro encerrado');
+    $dashboard = Livewire::test('pages::dashboard')
+        ->call('requestCloseMeeting')
+        ->assertDispatched('ts-ui:dialog');
+
+    expect($meeting->fresh()->status)->toBe('active');
+
+    $dashboard->call('closeMeeting')->assertHasNoErrors()->assertSee('Encontro encerrado');
 
     expect($meeting->fresh()->status)->toBe('completed');
     expect($first->fresh()->status)->toBe('confirmed');

@@ -16,9 +16,12 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use TallStackUi\Traits\Interactions;
 
 new #[Layout('layout')] class extends Component
 {
+    use Interactions;
+
     public ?int $meetingId = null;
 
     public int|string $teamSize = 4;
@@ -108,6 +111,15 @@ new #[Layout('layout')] class extends Component
         unset($this->meeting, $this->currentMatch);
     }
 
+    public function requestCloseMeeting(): void
+    {
+        $this->dialog()
+            ->question('Encerrar encontro?', 'A partida atual será cancelada, mas os resultados confirmados permanecerão no histórico.')
+            ->confirm('Encerrar encontro', 'closeMeeting')
+            ->cancel('Cancelar')
+            ->send();
+    }
+
     public function addPlayer(TeamFormationService $formation): void
     {
         $this->validate([
@@ -166,9 +178,27 @@ new #[Layout('layout')] class extends Component
         $matches->confirm($this->currentMatchOrFail());
     }
 
+    public function requestConfirmResult(): void
+    {
+        $this->dialog()
+            ->question('Confirmar resultado?', 'O resultado será salvo e a fila avançará para a próxima partida.')
+            ->confirm('Confirmar resultado', 'confirmResult')
+            ->cancel('Cancelar')
+            ->send();
+    }
+
     public function confirmIncompleteResult(MatchService $matches): void
     {
         $matches->confirm($this->currentMatchOrFail(), true);
+    }
+
+    public function requestConfirmIncompleteResult(): void
+    {
+        $this->dialog()
+            ->question('Autorizar jogo incompleto?', 'O resultado será confirmado e o próximo jogo poderá começar com uma equipe incompleta.')
+            ->confirm('Autorizar e avançar', 'confirmIncompleteResult')
+            ->cancel('Cancelar')
+            ->send();
     }
 
     public function confirmDrawWinner(string $side, bool $allowIncompleteNext, MatchService $matches): void
@@ -176,9 +206,36 @@ new #[Layout('layout')] class extends Component
         $matches->confirm($this->currentMatchOrFail(), $allowIncompleteNext, $side);
     }
 
+    public function requestConfirmDrawWinner(string $side, bool $allowIncompleteNext): void
+    {
+        $team = $side === 'home'
+            ? $this->currentMatchOrFail()->homeTeam
+            : $this->currentMatchOrFail()->awayTeam;
+        $description = $allowIncompleteNext
+            ? 'O desempate será confirmado e o próximo jogo poderá começar com uma equipe incompleta.'
+            : 'O desempate será confirmado e a fila avançará para a próxima partida.';
+
+        $this->dialog()
+            ->question("Confirmar vitória de {$team->name}?", $description)
+            ->confirm('Confirmar vencedor', 'confirmDrawWinner', [$side, $allowIncompleteNext])
+            ->cancel('Cancelar')
+            ->send();
+    }
+
     public function departPlayer(int $participantId, SubstitutionService $substitutions): void
     {
         $substitutions->depart($this->activeMeeting(), $participantId);
+    }
+
+    public function requestDepartPlayer(int $participantId): void
+    {
+        $participant = $this->activeMeeting()->participants()->with('player')->findOrFail($participantId);
+
+        $this->dialog()
+            ->question('Registrar saída?', "Marcar {$participant->player->name} como pessoa que foi embora?")
+            ->confirm('Registrar saída', 'departPlayer', $participantId)
+            ->cancel('Cancelar')
+            ->send();
     }
 
     public function loanPlayer(int $targetTeamId, int $participantId, SubstitutionService $substitutions): void
@@ -186,9 +243,27 @@ new #[Layout('layout')] class extends Component
         $substitutions->loan($this->activeMeeting(), $targetTeamId, $participantId);
     }
 
+    public function requestLoanPlayer(int $targetTeamId, int $participantId): void
+    {
+        $this->dialog()
+            ->question('Confirmar empréstimo?', 'Este empréstimo deixará o time de origem incompleto.')
+            ->confirm('Confirmar empréstimo', 'loanPlayer', [$targetTeamId, $participantId])
+            ->cancel('Cancelar')
+            ->send();
+    }
+
     public function undoResult(MatchService $matches): void
     {
         $matches->undo($this->activeMeeting());
+    }
+
+    public function requestUndoResult(): void
+    {
+        $this->dialog()
+            ->question('Desfazer último resultado?', 'O placar, as escalações e a posição dos times na fila serão restaurados.')
+            ->confirm('Desfazer resultado', 'undoResult')
+            ->cancel('Cancelar')
+            ->send();
     }
 
     public function promoteWaitingPlayers(MatchService $matches): void
@@ -471,7 +546,7 @@ new #[Layout('layout')] class extends Component
                 @error('durationMinutes') <p role="alert" class="mt-2 text-sm text-rose-300">{{ $message }}</p> @enderror
                 @error('teamMode') <p role="alert" class="mt-2 text-sm text-rose-300">{{ $message }}</p> @enderror
                 @error('settings') <p role="alert" class="mt-2 text-sm text-rose-300">{{ $message }}</p> @enderror
-                <button wire:click="closeMeeting" wire:confirm="Encerrar este encontro? A partida atual será cancelada; resultados confirmados permanecerão no histórico." class="mt-5 rounded-xl border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Encerrar encontro</button>
+                <button wire:click="requestCloseMeeting" class="mt-5 rounded-xl border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Encerrar encontro</button>
             @else
                 <p class="mt-3 text-sm text-slate-300">Modo: {{ $this->meeting->team_mode === 'dynamic' ? 'dinâmico' : 'fixo' }} · Gênero: {{ $this->meeting->gender_weight }} · Habilidade: {{ $this->meeting->skill_weight }} @if ($this->meeting->sport === 'volleyball') · Meta: {{ $this->meeting->target_score }} pontos @endif · Tempo: {{ $this->meeting->duration_minutes ? $this->meeting->duration_minutes.' min' : 'livre' }} · Desempate: {{ $this->meeting->ranking_tiebreaker === 'win_rate' ? 'aproveitamento' : 'saldo de '.($this->meeting->sport === 'volleyball' ? 'pontos' : 'gols') }}</p>
             @endif
@@ -557,25 +632,25 @@ new #[Layout('layout')] class extends Component
                                 <div class="w-full rounded-xl border border-amber-400/40 bg-amber-400/10 p-4">
                                     <p class="text-sm font-semibold text-amber-200">Placar empatado: escolha quem venceu o desempate para avançar a fila.</p>
                                     <div class="mt-3 flex flex-wrap gap-2">
-                                        <button wire:click="confirmDrawWinner('home', false)" wire:confirm="Confirmar vencedor do desempate e avançar a fila?" class="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-slate-200">{{ $this->currentMatch->homeTeam->name }} venceu</button>
-                                        <button wire:click="confirmDrawWinner('away', false)" wire:confirm="Confirmar vencedor do desempate e avançar a fila?" class="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-slate-200">{{ $this->currentMatch->awayTeam->name }} venceu</button>
+                                        <button wire:click="requestConfirmDrawWinner('home', false)" class="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-slate-200">{{ $this->currentMatch->homeTeam->name }} venceu</button>
+                                        <button wire:click="requestConfirmDrawWinner('away', false)" class="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-slate-200">{{ $this->currentMatch->awayTeam->name }} venceu</button>
                                     </div>
                                     @if ($this->vacancies->isNotEmpty())
                                         <p class="mt-3 text-xs text-amber-200">Se o próximo time ficará incompleto, autorize a próxima partida ao escolher o vencedor:</p>
                                         <div class="mt-2 flex flex-wrap gap-2">
-                                            <button wire:click="confirmDrawWinner('home', true)" wire:confirm="Confirmar o desempate e autorizar o próximo jogo incompleto?" class="rounded-xl border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-200">{{ $this->currentMatch->homeTeam->name }} · jogo incompleto</button>
-                                            <button wire:click="confirmDrawWinner('away', true)" wire:confirm="Confirmar o desempate e autorizar o próximo jogo incompleto?" class="rounded-xl border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-200">{{ $this->currentMatch->awayTeam->name }} · jogo incompleto</button>
+                                            <button wire:click="requestConfirmDrawWinner('home', true)" class="rounded-xl border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-200">{{ $this->currentMatch->homeTeam->name }} · jogo incompleto</button>
+                                            <button wire:click="requestConfirmDrawWinner('away', true)" class="rounded-xl border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-200">{{ $this->currentMatch->awayTeam->name }} · jogo incompleto</button>
                                         </div>
                                     @endif
                                 </div>
                             @else
-                                <button wire:click="confirmResult" wire:confirm="Confirmar resultado e avançar a fila?" class="rounded-xl bg-white px-5 py-3 font-bold text-slate-950 hover:bg-slate-200">Confirmar resultado</button>
+                                <button wire:click="requestConfirmResult" class="rounded-xl bg-white px-5 py-3 font-bold text-slate-950 hover:bg-slate-200">Confirmar resultado</button>
                                 @if ($this->vacancies->isNotEmpty())
-                                    <button wire:click="confirmIncompleteResult" wire:confirm="O próximo jogo pode começar com uma equipe incompleta. Confirma mesmo assim?" class="rounded-xl border border-amber-400 px-5 py-3 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Autorizar próximo jogo incompleto</button>
+                                    <button wire:click="requestConfirmIncompleteResult" class="rounded-xl border border-amber-400 px-5 py-3 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Autorizar próximo jogo incompleto</button>
                                 @endif
                             @endif
                             @if ($this->history->isNotEmpty())
-                                <button wire:click="undoResult" wire:confirm="Desfazer o último resultado?" class="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold hover:bg-slate-800">Desfazer último</button>
+                                <button wire:click="requestUndoResult" class="rounded-xl border border-slate-700 px-5 py-3 text-sm font-semibold hover:bg-slate-800">Desfazer último</button>
                             @endif
                         </div>
                         @endif
@@ -624,7 +699,7 @@ new #[Layout('layout')] class extends Component
                                         @if ($vacancy['impact'])
                                             <p class="mt-2 text-xs text-slate-400">Após o empréstimo: {{ $vacancy['team']->name }} terá {{ $vacancy['impact']['target_women'] }} mulher(es) e nível {{ $vacancy['impact']['target_skill'] }}; {{ $vacancy['suggestion']->team->name }} terá {{ $vacancy['impact']['source_women'] }} mulher(es) e nível {{ $vacancy['impact']['source_skill'] }}.</p>
                                         @endif
-                                        <button wire:click="loanPlayer({{ $vacancy['team']->id }}, {{ $vacancy['suggestion']->id }})" wire:confirm="Este empréstimo deixará o time de origem incompleto. Confirma?" class="mt-3 rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950 hover:bg-amber-300">Confirmar empréstimo</button>
+                                        <button wire:click="requestLoanPlayer({{ $vacancy['team']->id }}, {{ $vacancy['suggestion']->id }})" class="mt-3 rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950 hover:bg-amber-300">Confirmar empréstimo</button>
                                     @else
                                         <p class="mt-2 text-slate-400">Aguardando a chegada de uma pessoa disponível para completar este time.</p>
                                     @endif
@@ -701,7 +776,7 @@ new #[Layout('layout')] class extends Component
                                     @endif
                                 </span>
                                 @if ($this->meeting->status === 'active' && $participant->status === 'present')
-                                    <button wire:click="departPlayer({{ $participant->id }})" wire:confirm="Marcar {{ $participant->player->name }} como pessoa que foi embora?" aria-label="Registrar saída de {{ $participant->player->name }}" class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">Saiu</button>
+                                    <button wire:click="requestDepartPlayer({{ $participant->id }})" aria-label="Registrar saída de {{ $participant->player->name }}" class="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800">Saiu</button>
                                 @endif
                             </li>
                         @endforeach

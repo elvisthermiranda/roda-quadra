@@ -4,10 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>RodaQuadra · Painel</title>
+    <tallstackui:script />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
 <body class="min-h-screen bg-slate-950 font-sans text-slate-100 antialiased">
+    <x-dialog />
     {{ $slot }}
     @livewireScripts
 </body>

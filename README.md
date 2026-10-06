@@ -2,6 +2,8 @@
 
 O RodaQuadra é uma aplicação web responsiva para organizar partidas recreativas de vôlei, futsal e futebol. O sistema acompanha a ordem de chegada, forma equipes, controla placar e cronômetro, movimenta a fila de times e mantém o histórico e o ranking de cada encontro.
 
+As regras de negócio e o fluxo completo de operação estão descritos na [documentação funcional](DOCUMENTACAO.md).
+
 ## Funcionalidades
 
 - Cadastro e autenticação de organizadores.
@@ -32,13 +34,14 @@ O RodaQuadra é uma aplicação web responsiva para organizar partidas recreativ
 | Laravel | 13.34 | Rotas, autenticação, validação, banco de dados e regras da aplicação |
 | Livewire | 4.4 | Painel e placar reativos, implementados como componentes de arquivo único |
 | Livewire Blaze | 1.0 | Otimização da renderização dos componentes Blade |
+| TallStackUI | 4.x | Diálogos de confirmação integrados ao Livewire |
 | Blade | Laravel 13 | Templates e layouts da interface |
 | Tailwind CSS | 4.x | Estilização responsiva |
 | Vite Plus | 0.3 | Servidor de desenvolvimento e build dos assets |
 | Laravel Vite Plugin | 3.x | Integração dos assets com o Laravel |
 | SQLite | desenvolvimento | Banco padrão configurado em `.env.example` |
 
-O Alpine.js necessário para as interações no navegador é fornecido pelo Livewire. O projeto não possui, atualmente, TallStack UI nem Laravel Reverb instalados.
+O Alpine.js necessário para as interações no navegador é fornecido pelo Livewire. O projeto não possui, atualmente, Laravel Reverb instalado.
 
 ### Qualidade e desenvolvimento
 
