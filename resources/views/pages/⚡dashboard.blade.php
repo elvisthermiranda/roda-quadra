@@ -314,6 +314,19 @@ new #[Layout('layout')] class extends Component
         return $this->meeting ? (new RankingService)->forMeeting($this->meeting) : collect();
     }
 
+    /** @return Collection<int, int> */
+    #[Computed]
+    public function gameCountsByPlayer(): Collection
+    {
+        return $this->history
+            ->flatMap(fn (VolleyballMatch $match): Collection => collect($match->home_roster)
+                ->concat($match->away_roster)
+                ->unique('id')
+                ->pluck('id'))
+            ->countBy()
+            ->map(fn (int $games): int => $games);
+    }
+
     #[Computed]
     public function vacancies(): Collection
     {
@@ -750,7 +763,15 @@ new #[Layout('layout')] class extends Component
                         @error('name') <span class="text-sm text-rose-300">{{ $message }}</span> @enderror
                         <div class="grid grid-cols-2 gap-3">
                             <label class="text-sm font-medium">Gênero <select wire:model="gender" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3"><option value="female">Mulher</option><option value="male">Homem</option></select></label>
-                            <label class="text-sm font-medium">Nível <select wire:model="skillLevel" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3">@for ($level = 1; $level <= 5; $level++) <option value="{{ $level }}">{{ $level }}</option> @endfor</select></label>
+                            <label class="text-sm font-medium">Nível
+                                <select wire:model="skillLevel" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3">
+                                    <option value="1">1 - Iniciante</option>
+                                    <option value="2">2 - Básico</option>
+                                    <option value="3">3 - Intermediário</option>
+                                    <option value="4">4 - Avançado</option>
+                                    <option value="5">5 - Muito avançado</option>
+                                </select>
+                            </label>
                         </div>
                         <button class="mt-2 rounded-xl bg-emerald-500 px-4 py-3 font-bold text-slate-950 hover:bg-emerald-400" wire:loading.attr="disabled" wire:target="addPlayer">Adicionar à lista</button>
                     </form>
@@ -764,6 +785,8 @@ new #[Layout('layout')] class extends Component
                             <li wire:key="arrival-{{ $participant->id }}" class="flex items-center gap-3 rounded-xl bg-slate-950 px-3 py-2 text-sm">
                                 <span class="w-6 text-slate-500">{{ $participant->arrival_order }}.</span>
                                 <span class="min-w-0 flex-1 truncate">{{ $participant->player->name }}</span>
+                                @php($gamesPlayed = $this->gameCountsByPlayer->get($participant->player_id, 0))
+                                <span class="whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">{{ $gamesPlayed }} {{ $gamesPlayed === 1 ? 'jogo' : 'jogos' }}</span>
                                 <span class="text-xs text-slate-400">
                                     @if ($participant->status === 'left')
                                         Foi embora
@@ -808,13 +831,28 @@ new #[Layout('layout')] class extends Component
                             </div>
                         @endforeach
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm"><thead class="text-slate-400"><tr><th class="pb-3">Time</th><th class="pb-3">J</th><th class="pb-3">V</th><th class="pb-3">D</th><th class="pb-3">%</th><th class="pb-3">Saldo {{ $this->meeting->sport === 'volleyball' ? 'de pontos' : 'de gols' }}</th></tr></thead>
-                        <tbody>
-                            @foreach ($this->ranking as $row)
-                                <tr wire:key="ranking-{{ $row['team_id'] }}" class="border-t border-slate-800"><td class="py-2">{{ $row['name'] }}</td><td>{{ $row['played'] }}</td><td>{{ $row['wins'] }}</td><td>{{ $row['losses'] }}</td><td>{{ number_format($row['win_rate'] * 100, 0) }}%</td><td>{{ $row['point_balance'] }}</td></tr>
-                            @endforeach
-                        </tbody></table>
+                    <div class="flex flex-col gap-6">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm"><thead class="text-slate-400"><tr><th class="pb-3">Time</th><th class="pb-3">J</th><th class="pb-3">V</th><th class="pb-3">D</th><th class="pb-3">%</th><th class="pb-3">Saldo {{ $this->meeting->sport === 'volleyball' ? 'de pontos' : 'de gols' }}</th></tr></thead>
+                            <tbody>
+                                @foreach ($this->ranking as $row)
+                                    <tr wire:key="ranking-{{ $row['team_id'] }}" class="border-t border-slate-800"><td class="py-2">{{ $row['name'] }}</td><td>{{ $row['played'] }}</td><td>{{ $row['wins'] }}</td><td>{{ $row['losses'] }}</td><td>{{ number_format($row['win_rate'] * 100, 0) }}%</td><td>{{ $row['point_balance'] }}</td></tr>
+                                @endforeach
+                            </tbody></table>
+                        </div>
+                        <div>
+                            <h4 class="font-bold">Jogos por pessoa</h4>
+                            <p class="mt-1 text-xs text-slate-400">Somente partidas confirmadas neste encontro.</p>
+                            <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                                @foreach ($this->participants as $participant)
+                                    @php($gamesPlayed = $this->gameCountsByPlayer->get($participant->player_id, 0))
+                                    <div wire:key="player-games-{{ $participant->id }}" class="flex items-center justify-between gap-3 rounded-xl bg-slate-950 px-3 py-2 text-sm">
+                                        <span class="truncate">{{ $participant->player->name }}</span>
+                                        <strong class="whitespace-nowrap text-emerald-300">{{ $gamesPlayed }} {{ $gamesPlayed === 1 ? 'jogo' : 'jogos' }}</strong>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
                     </div>
                 </div>
             @endif

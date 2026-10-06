@@ -23,6 +23,34 @@ function registerManagementPlayers(Meeting $meeting, int $count): void
     }
 }
 
+test('the player form explains every skill level', function () {
+    Meeting::factory()->create();
+
+    Livewire::test('pages::dashboard')
+        ->assertSee('1 - Iniciante')
+        ->assertSee('2 - Básico')
+        ->assertSee('3 - Intermediário')
+        ->assertSee('4 - Avançado')
+        ->assertSee('5 - Muito avançado');
+});
+
+test('the dashboard counts confirmed games for each player in the meeting', function () {
+    $meeting = Meeting::factory()->create();
+    registerManagementPlayers($meeting, 8);
+    $match = $meeting->matches()->firstOrFail();
+    $match->update(['home_score' => 15]);
+    app(MatchService::class)->confirm($match);
+    app(TeamFormationService::class)->arrive($meeting, 'Novata', 'female', 2);
+
+    Livewire::test('pages::dashboard')
+        ->assertSee('Jogos por pessoa')
+        ->assertSee('Somente partidas confirmadas neste encontro.')
+        ->assertSee('Atleta 1')
+        ->assertSee('1 jogo')
+        ->assertSee('Novata')
+        ->assertSee('0 jogos');
+});
+
 test('a registered player is reused across meetings without another player record', function () {
     $player = Player::factory()->create(['name' => 'Ana']);
     $firstMeeting = Meeting::factory()->create();

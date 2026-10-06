@@ -69,6 +69,18 @@ Cada jogador possui:
 - gênero;
 - nível de habilidade de 1 a 5.
 
+A escala de habilidade considera números maiores como maior nível técnico:
+
+| Nível | Classificação |
+| --- | --- |
+| 1 | Iniciante |
+| 2 | Básico |
+| 3 | Intermediário |
+| 4 | Avançado |
+| 5 | Muito avançado |
+
+O nível não limita as ações do jogador. Ele é usado no cálculo de equilíbrio: o sistema soma os níveis dos participantes de cada time e tenta reduzir a diferença entre os totais.
+
 É possível cadastrar uma pessoa nova ou selecionar alguém que já participou de outro encontro da mesma conta.
 
 Ao entrar no encontro, cada participante recebe uma posição crescente na lista de chegada. Essa ordem tem prioridade sobre o equilíbrio:
@@ -350,6 +362,18 @@ Se o desempate escolhido for **saldo**, a ordem será:
 
 O aproveitamento é calculado como `vitórias ÷ jogos disputados`. Times sem partidas possuem aproveitamento zero.
 
+### Jogos por pessoa
+
+O painel também conta quantas partidas cada pessoa disputou no encontro. A contagem usa as escalações históricas dos dois lados e considera somente partidas confirmadas.
+
+- Cada pessoa conta no máximo uma vez por partida, mesmo que seu nome apareça mais de uma vez na escalação.
+- A partida atual não entra na contagem antes da confirmação.
+- Pessoas que ainda não disputaram uma partida aparecem com `0 jogos`.
+- Ao desfazer o último resultado, a partida deixa de ser confirmada e sai automaticamente da contagem.
+- A contagem pertence ao encontro atual; ela não soma partidas de encontros anteriores.
+
+O total aparece na lista de chegada e na seção “Jogos por pessoa”, junto ao histórico e ranking. Não existe uma coluna acumulada no cadastro do jogador: o valor é calculado diretamente do histórico para permanecer coerente com confirmações e desfazimentos.
+
 ## Placar público
 
 Cada encontro recebe um token aleatório de 40 caracteres. O link de placar público pode ser compartilhado com jogadores e espectadores sem liberar acesso ao painel administrativo.
@@ -447,10 +471,9 @@ Se apenas um time estivesse esperando no passo 5, A poderia permanecer além da 
 
 - O sistema trabalha com duas equipes por partida.
 - Gênero está disponível nas opções mulher e homem.
-- Nível de habilidade vai de 1 a 5.
+- O nível de habilidade vai de 1 (iniciante) a 5 (muito avançado).
 - O limite de permanência é fixo em duas partidas consecutivas.
 - Não há empate definitivo no ranking: partidas empatadas de futebol ou futsal exigem a escolha de um vencedor.
 - O cronômetro informa o fim do tempo previsto, mas não encerra a partida sozinho.
 - O placar público atualiza por consulta periódica; Laravel Reverb não está instalado.
 - Não há edição ou exclusão de partidas antigas confirmadas além da ação controlada de desfazer o último resultado.
-
